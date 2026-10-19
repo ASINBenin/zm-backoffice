@@ -12,12 +12,15 @@ use Laminas\Mvc\Middleware\PipeSpec;
 use Laminas\ServiceManager\AbstractFactory\ReflectionBasedAbstractFactory;
 use Monarc\BackOffice\Controller;
 use Monarc\BackOffice\Middleware\AnrValidationMiddleware;
+use Monarc\BackOffice\Table\CampaignTable;
 use Monarc\BackOffice\Table\ClientModelTable;
 use Monarc\BackOffice\Table\ClientTable;
 use Monarc\BackOffice\Table\ServerTable;
+use Monarc\BackOffice\Service\CampaignService;
 use Monarc\BackOffice\Service\ClientService;
 use Monarc\BackOffice\Service\ServerService;
 use Monarc\BackOffice\Validator\InputValidator\Asset\PostAssetDataInputValidator;
+use Monarc\BackOffice\Validator\InputValidator\Campaign\PostCampaignInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\Client\PostClientInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\Server\PostServerDataInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\Threat\PostThreatDataInputValidator;
@@ -78,6 +81,53 @@ return [
                     ],
                     'defaults' => [
                         'controller' => Controller\ApiAdminServersController::class,
+                    ],
+                ],
+            ],
+
+            'monarc_api_campaigns' => [
+                'type' => 'segment',
+                'options' => [
+                    'route' => '/api/campaigns[/:id]',
+                    'constraints' => [
+                        'id' => '[0-9]+',
+                    ],
+                    'defaults' => [
+                        'controller' => Controller\ApiCampaignsController::class,
+                    ],
+                ],
+            ],
+
+            'monarc_api_campaign_status' => [
+                'type' => 'segment',
+                'options' => [
+                    'route' => '/api/campaigns/:id/:action',
+                    'constraints' => [
+                        'id' => '[0-9]+',
+                        'action' => 'publish|close',
+                    ],
+                    'defaults' => [
+                        'controller' => Controller\ApiCampaignsController::class,
+                    ],
+                ],
+            ],
+
+            'monarc_api_campaign_clients' => [
+                'type' => 'literal',
+                'options' => [
+                    'route' => '/api/campaign-clients',
+                    'defaults' => [
+                        'controller' => Controller\ApiCampaignClientsController::class,
+                    ],
+                ],
+            ],
+
+            'monarc_api_campaign_models' => [
+                'type' => 'literal',
+                'options' => [
+                    'route' => '/api/campaign-models',
+                    'defaults' => [
+                        'controller' => Controller\ApiCampaignModelsController::class,
                     ],
                 ],
             ],
@@ -850,6 +900,9 @@ return [
             Controller\ApiAdminHistoricalController::class => AutowireFactory::class,
             Controller\ApiAdminPasswordsController::class => AutowireFactory::class,
             Controller\ApiAdminServersController::class => AutowireFactory::class,
+            Controller\ApiCampaignsController::class => AutowireFactory::class,
+            Controller\ApiCampaignClientsController::class => AutowireFactory::class,
+            Controller\ApiCampaignModelsController::class => AutowireFactory::class,
             Controller\ApiAdminUsersController::class => AutowireFactory::class,
             Controller\ApiAdminUserTwoFAController::class => AutowireFactory::class,
             Controller\ApiAdminUsersRolesController::class => AutowireFactory::class,
@@ -907,8 +960,10 @@ return [
             ServerTable::class => ClientEntityManagerFactory::class,
             ClientTable::class => ClientEntityManagerFactory::class,
             ClientModelTable::class => ClientEntityManagerFactory::class,
+            CampaignTable::class => ClientEntityManagerFactory::class,
 
             ServerService::class => AutowireFactory::class,
+            CampaignService::class => AutowireFactory::class,
             ClientService::class => ReflectionBasedAbstractFactory::class,
 
             /* Validators */
@@ -938,6 +993,7 @@ return [
             },
             PostServerDataInputValidator::class => ReflectionBasedAbstractFactory::class,
             PostClientInputValidator::class => ReflectionBasedAbstractFactory::class,
+            PostCampaignInputValidator::class => ReflectionBasedAbstractFactory::class,
         ],
     ],
 
@@ -1090,6 +1146,18 @@ return [
             'monarc_api_models',
             'monarc_api_admin_users_roles',
             'monarc_api_user_profile',
+        ],
+        // Admin campagnes : campagnes d'analyse de risques adressées aux entités
+        'campadmin' => [
+            'monarc_api_user_password',
+            'monarc_api_user_profile',
+            'monarc_api_user_activate_2fa',
+            'monarc_api_user_recovery_codes',
+            'monarc_api_admin_users_roles',
+            'monarc_api_campaigns',
+            'monarc_api_campaign_status',
+            'monarc_api_campaign_clients',
+            'monarc_api_campaign_models',
         ],
     ],
 ];

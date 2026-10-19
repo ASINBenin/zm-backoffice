@@ -11,6 +11,7 @@ use Doctrine\ORM\EntityNotFoundException;
 use Fig\Http\Message\StatusCodeInterface;
 use Laminas\Diactoros\ResponseFactory;
 use Laminas\Router\RouteMatch;
+use Monarc\BackOffice\Service\CampaignService;
 use Monarc\Core\Entity\UserRole;
 use Monarc\Core\Entity\UserSuperClass;
 use Monarc\Core\Service\ConnectedUserService;
@@ -29,7 +30,8 @@ class AnrValidationMiddleware implements MiddlewareInterface
     public function __construct(
         AnrTable $anrTable,
         ConnectedUserService $connectedUserService,
-        ResponseFactory $responseFactory
+        ResponseFactory $responseFactory,
+        private CampaignService $campaignService
     ) {
         $this->anrTable = $anrTable;
         $this->connectedUser = $connectedUserService->getConnectedUser();
@@ -64,6 +66,10 @@ class AnrValidationMiddleware implements MiddlewareInterface
                     StatusCodeInterface::STATUS_FORBIDDEN,
                     sprintf('The models access is only allowed for "%s" users.', UserRole::SUPER_ADMIN)
                 );
+            }
+
+            if ($anr->getModel() !== null && !\in_array($request->getMethod(), ['GET', 'HEAD'], true)) {
+                $this->campaignService->assertModelIsEditable($anr->getModel()->getId());
             }
 
             $request = $request->withAttribute('anr', $anr);

@@ -8,6 +8,7 @@
 namespace Monarc\BackOffice\Controller;
 
 use Laminas\Mvc\Controller\AbstractRestfulController;
+use Monarc\BackOffice\Service\CampaignService;
 use Monarc\BackOffice\Service\ClientService;
 use Monarc\Core\Controller\Handler\ControllerRequestResponseHandlerTrait;
 use Monarc\Core\InputFormatter\Model\GetModelsInputFormatter;
@@ -30,7 +31,8 @@ class ApiModelsController extends AbstractRestfulController
         GetModelsInputFormatter $getModelsInputFormatter,
         PostModelDataInputValidator $postModelDataInputValidator,
         ModelService $modelService,
-        ClientService $clientService
+        ClientService $clientService,
+        private CampaignService $campaignService
     ) {
         $this->getModelsInputFormatter = $getModelsInputFormatter;
         $this->postModelDataInputValidator = $postModelDataInputValidator;
@@ -74,6 +76,7 @@ class ApiModelsController extends AbstractRestfulController
     public function update($id, $data)
     {
         $this->validatePostParams($this->postModelDataInputValidator, $data);
+        $this->campaignService->assertModelIsEditable((int)$id);
 
         $this->modelService->update((int)$id, $data);
 
@@ -82,6 +85,8 @@ class ApiModelsController extends AbstractRestfulController
 
     public function patch($id, $data)
     {
+        $this->campaignService->assertModelIsEditable((int)$id);
+
         $this->modelService->patch((int)$id, $data);
 
         return $this->getSuccessfulJsonResponse();
@@ -89,6 +94,8 @@ class ApiModelsController extends AbstractRestfulController
 
     public function delete($id)
     {
+        $this->campaignService->assertModelIsEditable((int)$id);
+
         $this->modelService->delete((int)$id);
 
         /* Unlink the model for all the clients where it is linked. */
