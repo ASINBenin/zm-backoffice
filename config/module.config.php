@@ -12,11 +12,14 @@ use Laminas\Mvc\Middleware\PipeSpec;
 use Laminas\ServiceManager\AbstractFactory\ReflectionBasedAbstractFactory;
 use Monarc\BackOffice\Controller;
 use Monarc\BackOffice\Middleware\AnrValidationMiddleware;
+use Monarc\BackOffice\Middleware\EntityApiTokenMiddleware;
 use Monarc\BackOffice\Table\CampaignTable;
+use Monarc\BackOffice\Table\ClientApiTokenTable;
 use Monarc\BackOffice\Table\ClientModelTable;
 use Monarc\BackOffice\Table\ClientTable;
 use Monarc\BackOffice\Table\ServerTable;
 use Monarc\BackOffice\Service\CampaignService;
+use Monarc\BackOffice\Service\ClientApiTokenService;
 use Monarc\BackOffice\Service\ClientService;
 use Monarc\BackOffice\Service\ServerService;
 use Monarc\BackOffice\Validator\InputValidator\Asset\PostAssetDataInputValidator;
@@ -128,6 +131,34 @@ return [
                     'route' => '/api/campaign-models',
                     'defaults' => [
                         'controller' => Controller\ApiCampaignModelsController::class,
+                    ],
+                ],
+            ],
+
+            'monarc_api_client_api_token' => [
+                'type' => 'segment',
+                'options' => [
+                    'route' => '/api/clients/:id/api-token',
+                    'constraints' => [
+                        'id' => '[0-9]+',
+                    ],
+                    'defaults' => [
+                        'controller' => Controller\ApiClientApiTokenController::class,
+                    ],
+                ],
+            ],
+
+            // Routes appelées par les FO avec le jeton de leur entité
+            'monarc_api_entity_me' => [
+                'type' => 'literal',
+                'options' => [
+                    'route' => '/api/entity/me',
+                    'defaults' => [
+                        'controller' => PipeSpec::class,
+                        'middleware' => new PipeSpec(
+                            EntityApiTokenMiddleware::class,
+                            Controller\ApiEntityMeController::class
+                        ),
                     ],
                 ],
             ],
@@ -903,6 +934,8 @@ return [
             Controller\ApiCampaignsController::class => AutowireFactory::class,
             Controller\ApiCampaignClientsController::class => AutowireFactory::class,
             Controller\ApiCampaignModelsController::class => AutowireFactory::class,
+            Controller\ApiClientApiTokenController::class => AutowireFactory::class,
+            Controller\ApiEntityMeController::class => AutowireFactory::class,
             Controller\ApiAdminUsersController::class => AutowireFactory::class,
             Controller\ApiAdminUserTwoFAController::class => AutowireFactory::class,
             Controller\ApiAdminUsersRolesController::class => AutowireFactory::class,
@@ -961,9 +994,11 @@ return [
             ClientTable::class => ClientEntityManagerFactory::class,
             ClientModelTable::class => ClientEntityManagerFactory::class,
             CampaignTable::class => ClientEntityManagerFactory::class,
+            ClientApiTokenTable::class => ClientEntityManagerFactory::class,
 
             ServerService::class => AutowireFactory::class,
             CampaignService::class => AutowireFactory::class,
+            ClientApiTokenService::class => AutowireFactory::class,
             ClientService::class => ReflectionBasedAbstractFactory::class,
 
             /* Validators */
@@ -1033,6 +1068,11 @@ return [
                 ],
             ],
         ],
+    ],
+
+    // Routes sans connexion d'utilisateur : celles des FO sont protégées par EntityApiTokenMiddleware
+    'permissions' => [
+        'monarc_api_entity_me',
     ],
 
     'roles' => [
@@ -1136,6 +1176,7 @@ return [
             'monarc_api_user_recovery_codes',
             'monarc_api_user_password',
             'monarc_api_clients',
+            'monarc_api_client_api_token',
             // There are additional validations of the role in the controller.
             'monarc_api_admin_servers',
             'monarc_api_guides',

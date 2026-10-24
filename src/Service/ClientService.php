@@ -43,7 +43,8 @@ class ClientService
         ModelTable $modelTable,
         ClientModelTable $clientModelTable,
         ConnectedUserService $connectedUserService,
-        array $config
+        array $config,
+        private ClientApiTokenService $clientApiTokenService
     ) {
         $this->clientTable = $clientTable;
         $this->serverTable = $serverTable;
@@ -213,6 +214,24 @@ class ClientService
         return $client;
     }
 
+    /**
+     * Nouveau jeton de l'entité, transmis à son FO par le service de déploiement : l'ancien ne vaut plus.
+     */
+    public function renewApiToken(int $id): void
+    {
+        /** @var Client $client */
+        $client = $this->clientTable->findById($id);
+        if ($client->getServer()->getFqdn() === '') {
+            throw new Exception('Le serveur de l\'entité n\'a pas de FQDN : son FO ne peut pas recevoir de jeton.', 412);
+        }
+
+        $this->createJsonFileWithDataContent($this->config['spool_path_update'], [
+            'server' => $client->getServer()->getFqdn(),
+            'proxy_alias' => $client->getProxyAlias(),
+            'api_token' => $this->clientApiTokenService->issue($client),
+        ]);
+    }
+
     public function delete($id): void
     {
         /** @var Client $client */
@@ -326,6 +345,7 @@ class ClientService
             'twoFactorAuthEnforced' => $client->isTwoFactorAuthEnforced(),
             'isBackgroundImportActive' => $client->isBackgroundImportActive(),
             'sql_bootstrap' => rtrim($sqlBootstrap),
+            'api_token' => $this->clientApiTokenService->issue($client),
         ]);
     }
 
