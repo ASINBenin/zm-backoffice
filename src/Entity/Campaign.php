@@ -226,6 +226,20 @@ class Campaign
         return $this->participants;
     }
 
+    /**
+     * Participation d'une entité, ou null si elle n'est pas invitée.
+     */
+    public function getParticipantOf(Client $client): ?CampaignParticipant
+    {
+        foreach ($this->participants as $participant) {
+            if ($participant->getClient()->getId() === $client->getId()) {
+                return $participant;
+            }
+        }
+
+        return null;
+    }
+
     public function addParticipant(CampaignParticipant $participant): self
     {
         if (!$this->participants->contains($participant)) {

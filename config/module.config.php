@@ -20,6 +20,7 @@ use Monarc\BackOffice\Table\ClientTable;
 use Monarc\BackOffice\Table\ServerTable;
 use Monarc\BackOffice\Service\CampaignService;
 use Monarc\BackOffice\Service\ClientApiTokenService;
+use Monarc\BackOffice\Service\EntityCampaignService;
 use Monarc\BackOffice\Service\ClientService;
 use Monarc\BackOffice\Service\ServerService;
 use Monarc\BackOffice\Validator\InputValidator\Asset\PostAssetDataInputValidator;
@@ -158,6 +159,20 @@ return [
                         'middleware' => new PipeSpec(
                             EntityApiTokenMiddleware::class,
                             Controller\ApiEntityMeController::class
+                        ),
+                    ],
+                ],
+            ],
+
+            'monarc_api_entity_campaigns' => [
+                'type' => 'literal',
+                'options' => [
+                    'route' => '/api/entity/campaigns',
+                    'defaults' => [
+                        'controller' => PipeSpec::class,
+                        'middleware' => new PipeSpec(
+                            EntityApiTokenMiddleware::class,
+                            Controller\ApiEntityCampaignsController::class
                         ),
                     ],
                 ],
@@ -936,6 +951,7 @@ return [
             Controller\ApiCampaignModelsController::class => AutowireFactory::class,
             Controller\ApiClientApiTokenController::class => AutowireFactory::class,
             Controller\ApiEntityMeController::class => AutowireFactory::class,
+            Controller\ApiEntityCampaignsController::class => AutowireFactory::class,
             Controller\ApiAdminUsersController::class => AutowireFactory::class,
             Controller\ApiAdminUserTwoFAController::class => AutowireFactory::class,
             Controller\ApiAdminUsersRolesController::class => AutowireFactory::class,
@@ -999,6 +1015,7 @@ return [
             ServerService::class => AutowireFactory::class,
             CampaignService::class => AutowireFactory::class,
             ClientApiTokenService::class => AutowireFactory::class,
+            EntityCampaignService::class => AutowireFactory::class,
             ClientService::class => ReflectionBasedAbstractFactory::class,
 
             /* Validators */
@@ -1073,6 +1090,7 @@ return [
     // Routes sans connexion d'utilisateur : celles des FO sont protégées par EntityApiTokenMiddleware
     'permissions' => [
         'monarc_api_entity_me',
+        'monarc_api_entity_campaigns',
     ],
 
     'roles' => [
