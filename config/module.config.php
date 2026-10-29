@@ -178,6 +178,23 @@ return [
                 ],
             ],
 
+            'monarc_api_entity_campaign_participation' => [
+                'type' => 'segment',
+                'options' => [
+                    'route' => '/api/entity/campaigns/:campaignId/participation',
+                    'constraints' => [
+                        'campaignId' => '[0-9]+',
+                    ],
+                    'defaults' => [
+                        'controller' => PipeSpec::class,
+                        'middleware' => new PipeSpec(
+                            EntityApiTokenMiddleware::class,
+                            Controller\ApiEntityCampaignParticipationController::class
+                        ),
+                    ],
+                ],
+            ],
+
             'monarc_api_admin_users' => [
                 'type' => 'segment',
                 'options' => [
@@ -952,6 +969,7 @@ return [
             Controller\ApiClientApiTokenController::class => AutowireFactory::class,
             Controller\ApiEntityMeController::class => AutowireFactory::class,
             Controller\ApiEntityCampaignsController::class => AutowireFactory::class,
+            Controller\ApiEntityCampaignParticipationController::class => AutowireFactory::class,
             Controller\ApiAdminUsersController::class => AutowireFactory::class,
             Controller\ApiAdminUserTwoFAController::class => AutowireFactory::class,
             Controller\ApiAdminUsersRolesController::class => AutowireFactory::class,
@@ -1091,6 +1109,7 @@ return [
     'permissions' => [
         'monarc_api_entity_me',
         'monarc_api_entity_campaigns',
+        'monarc_api_entity_campaign_participation',
     ],
 
     'roles' => [

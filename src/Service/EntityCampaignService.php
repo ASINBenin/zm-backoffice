@@ -3,6 +3,7 @@
 namespace Monarc\BackOffice\Service;
 
 use DateTime;
+use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
 use Monarc\BackOffice\Entity\Campaign;
@@ -36,6 +37,35 @@ class EntityCampaignService
         ];
     }
 
+    /**
+     * L'entité participe à la campagne, entre son début et la date limite de réponse. Répétable sans effet.
+     *
+     * @return array{participation: array{status: string}}
+     */
+    public function participate(Client $client, int $campaignId): array
+    {
+        /** @var Campaign|null $campaign */
+        $campaign = $this->campaignTable->findById($campaignId, false);
+        $participant = $campaign?->getParticipantOf($client);
+        if ($participant === null || !$campaign->isPublished()) {
+            throw new Exception('Cette campagne n\'existe pas pour cette entité.', 412);
+        }
+
+        if (!$participant->isParticipating()) {
+            $today = new DateTimeImmutable('today');
+            if ($today < $campaign->getStartDate() || $today > $campaign->getResponseDeadline()) {
+                throw new Exception(
+                    'La participation n\'est possible qu\'entre le début de la campagne et la date limite de réponse.',
+                    412
+                );
+            }
+            $participant->participate()->setUpdater($client->getProxyAlias());
+            $this->campaignTable->save($campaign);
+        }
+
+        return ['participation' => ['status' => $participant->getStatus()]];
+    }
+
     private function parseSince(?string $since): ?DateTime
     {
         if ($since === null || $since === '') {
@@ -60,6 +90,7 @@ class EntityCampaignService
             'id' => $campaign->getId(),
             'label' => $campaign->getLabel(),
             'description' => $campaign->getDescription(),
+            'modelId' => $campaign->getModelId(),
             'status' => $campaign->getStatus(),
             'startDate' => $campaign->getStartDate()->format('Y-m-d'),
             'responseDeadline' => $campaign->getResponseDeadline()->format('Y-m-d'),

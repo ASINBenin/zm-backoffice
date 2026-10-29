@@ -21,6 +21,7 @@ class CampaignParticipant
     use UpdateEntityTrait;
 
     public const STATUS_INVITED = 'invited';
+    public const STATUS_PARTICIPATING = 'participating';
 
     /**
      * @ORM\Column(name="id", type="integer", nullable=false)
@@ -66,5 +67,17 @@ class CampaignParticipant
     public function getStatus(): string
     {
         return $this->status;
+    }
+
+    public function isParticipating(): bool
+    {
+        return $this->status === self::STATUS_PARTICIPATING;
+    }
+
+    public function participate(): self
+    {
+        $this->status = self::STATUS_PARTICIPATING;
+
+        return $this;
     }
 }
