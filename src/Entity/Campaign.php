@@ -192,6 +192,11 @@ class Campaign
         return $this->status === self::STATUS_PUBLISHED;
     }
 
+    public function isClosed(): bool
+    {
+        return $this->status === self::STATUS_CLOSED;
+    }
+
     public function publish(): self
     {
         $this->status = self::STATUS_PUBLISHED;

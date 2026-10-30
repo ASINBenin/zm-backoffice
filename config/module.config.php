@@ -17,15 +17,19 @@ use Monarc\BackOffice\Table\CampaignTable;
 use Monarc\BackOffice\Table\ClientApiTokenTable;
 use Monarc\BackOffice\Table\ClientModelTable;
 use Monarc\BackOffice\Table\ClientTable;
+use Monarc\BackOffice\Table\EntitySubmissionTable;
 use Monarc\BackOffice\Table\ServerTable;
 use Monarc\BackOffice\Service\CampaignService;
 use Monarc\BackOffice\Service\ClientApiTokenService;
 use Monarc\BackOffice\Service\EntityCampaignService;
+use Monarc\BackOffice\Service\EntitySubmissionService;
+use Monarc\BackOffice\Service\SubmissionService;
 use Monarc\BackOffice\Service\ClientService;
 use Monarc\BackOffice\Service\ServerService;
 use Monarc\BackOffice\Validator\InputValidator\Asset\PostAssetDataInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\Campaign\PostCampaignInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\Client\PostClientInputValidator;
+use Monarc\BackOffice\Validator\InputValidator\EntitySubmission\PostEntitySubmissionInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\Server\PostServerDataInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\Threat\PostThreatDataInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\Vulnerability\PostVulnerabilityDataInputValidator;
@@ -191,6 +195,34 @@ return [
                             EntityApiTokenMiddleware::class,
                             Controller\ApiEntityCampaignParticipationController::class
                         ),
+                    ],
+                ],
+            ],
+
+            'monarc_api_entity_submissions' => [
+                'type' => 'literal',
+                'options' => [
+                    'route' => '/api/entity/submissions',
+                    'defaults' => [
+                        'controller' => PipeSpec::class,
+                        'middleware' => new PipeSpec(
+                            EntityApiTokenMiddleware::class,
+                            Controller\ApiEntitySubmissionsController::class
+                        ),
+                    ],
+                ],
+            ],
+
+            'monarc_api_entity_submissions_admin' => [
+                'type' => 'segment',
+                'options' => [
+                    'route' => '/api/entity-submissions[/:id]',
+                    'constraints' => [
+                        'id' => '[0-9]+',
+                    ],
+                    'defaults' => [
+                        'controller' => PipeSpec::class,
+                        'middleware' => new PipeSpec(Controller\ApiEntitySubmissionsAdminController::class),
                     ],
                 ],
             ],
@@ -970,6 +1002,8 @@ return [
             Controller\ApiEntityMeController::class => AutowireFactory::class,
             Controller\ApiEntityCampaignsController::class => AutowireFactory::class,
             Controller\ApiEntityCampaignParticipationController::class => AutowireFactory::class,
+            Controller\ApiEntitySubmissionsController::class => AutowireFactory::class,
+            Controller\ApiEntitySubmissionsAdminController::class => AutowireFactory::class,
             Controller\ApiAdminUsersController::class => AutowireFactory::class,
             Controller\ApiAdminUserTwoFAController::class => AutowireFactory::class,
             Controller\ApiAdminUsersRolesController::class => AutowireFactory::class,
@@ -1029,11 +1063,14 @@ return [
             ClientModelTable::class => ClientEntityManagerFactory::class,
             CampaignTable::class => ClientEntityManagerFactory::class,
             ClientApiTokenTable::class => ClientEntityManagerFactory::class,
+            EntitySubmissionTable::class => ClientEntityManagerFactory::class,
 
             ServerService::class => AutowireFactory::class,
             CampaignService::class => AutowireFactory::class,
             ClientApiTokenService::class => AutowireFactory::class,
             EntityCampaignService::class => AutowireFactory::class,
+            EntitySubmissionService::class => AutowireFactory::class,
+            SubmissionService::class => AutowireFactory::class,
             ClientService::class => ReflectionBasedAbstractFactory::class,
 
             /* Validators */
@@ -1064,6 +1101,7 @@ return [
             PostServerDataInputValidator::class => ReflectionBasedAbstractFactory::class,
             PostClientInputValidator::class => ReflectionBasedAbstractFactory::class,
             PostCampaignInputValidator::class => ReflectionBasedAbstractFactory::class,
+            PostEntitySubmissionInputValidator::class => ReflectionBasedAbstractFactory::class,
         ],
     ],
 
@@ -1110,6 +1148,7 @@ return [
         'monarc_api_entity_me',
         'monarc_api_entity_campaigns',
         'monarc_api_entity_campaign_participation',
+        'monarc_api_entity_submissions',
     ],
 
     'roles' => [
@@ -1236,6 +1275,7 @@ return [
             'monarc_api_campaign_status',
             'monarc_api_campaign_clients',
             'monarc_api_campaign_models',
+            'monarc_api_entity_submissions_admin',
         ],
     ],
 ];
