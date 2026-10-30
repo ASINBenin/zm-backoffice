@@ -14,6 +14,10 @@ class AdminUserInit extends AbstractSeed
         $email = 'admin@admin.localhost';
         $defaultPassword = 'admin';
 
+        if (!empty($this->fetchRow('SELECT id FROM users WHERE email = \'' . $email . '\' LIMIT 1'))) {
+            return;
+        }
+
         $posts = $this->table('users');
         $posts->insert([
             'status' => 1,
