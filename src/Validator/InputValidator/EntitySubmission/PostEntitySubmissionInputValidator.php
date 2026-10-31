@@ -37,7 +37,8 @@ class PostEntitySubmissionInputValidator extends AbstractInputValidator
                 'name' => 'isSigned',
                 'required' => false,
                 'allow_empty' => true,
-                'filters' => [['name' => Boolean::class]],
+                // "false", "0" et "" valent faux : le type par défaut du filtre prendrait "false" pour vrai
+                'filters' => [['name' => Boolean::class, 'options' => ['type' => Boolean::TYPE_ALL]]],
             ],
             [
                 'name' => 'submittedBy',

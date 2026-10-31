@@ -30,7 +30,7 @@ class EntitySubmissionService
 
     /**
      * Enregistre le rapport PDF comme nouvelle version de l'analyse, dans la campagne ou hors campagne.
-     * Les versions précédentes sont conservées.
+     * Les versions précédentes sont conservées. Une campagne qui exige la signature refuse un rapport non signé.
      *
      * @param array{campaignId?: int, anrId: int, analysisLabel: string, isSigned?: bool, submittedBy: string} $data
      * @param array $file Fichier reçu (structure de $_FILES).
@@ -40,6 +40,9 @@ class EntitySubmissionService
     public function submit(Client $client, array $data, array $file): array
     {
         $campaign = empty($data['campaignId']) ? null : $this->getOpenCampaign($client, (int)$data['campaignId']);
+        if ($campaign?->isSignatureRequired() && empty($data['isSigned'])) {
+            throw new Exception('Cette campagne exige un rapport signé.', 412);
+        }
         $this->validateFile($file);
 
         $directory = $this->getClientDirectory($client);
