@@ -138,7 +138,10 @@ class EntitySubmissionService
         }
     }
 
-    private function getPreparedSubmissionData(EntitySubmission $submission): array
+    /**
+     * Version telle que l'entité la voit, avec l'appréciation de l'ASIN si elle existe.
+     */
+    public function getPreparedSubmissionData(EntitySubmission $submission): array
     {
         return [
             'id' => $submission->getId(),
@@ -151,6 +154,11 @@ class EntitySubmissionService
             'isSigned' => $submission->isSigned(),
             'submittedBy' => $submission->getCreator(),
             'submittedAt' => $submission->getCreatedAt()->format(DateTimeInterface::ATOM),
+            'appreciation' => $submission->getAppreciationLevel() === null ? null : [
+                'level' => $submission->getAppreciationLevel(),
+                'comment' => $submission->getAppreciationComment(),
+                'appreciatedAt' => $submission->getAppreciatedAt()->format(DateTimeInterface::ATOM),
+            ],
         ];
     }
 }

@@ -2,20 +2,25 @@
 
 namespace Monarc\BackOffice\Service;
 
-use DateTimeInterface;
 use Monarc\BackOffice\Entity\EntitySubmission;
 use Monarc\BackOffice\Table\EntitySubmissionTable;
+use Monarc\Core\Entity\User;
 use Monarc\Core\Exception\Exception;
+use Monarc\Core\Service\ConnectedUserService;
 
 /**
  * Rapports soumis par les entités, vus par les administrateurs du BO.
  */
 class SubmissionService
 {
+    private User $connectedUser;
+
     public function __construct(
         private EntitySubmissionTable $entitySubmissionTable,
-        private EntitySubmissionService $entitySubmissionService
+        private EntitySubmissionService $entitySubmissionService,
+        ConnectedUserService $connectedUserService
     ) {
+        $this->connectedUser = $connectedUserService->getConnectedUser();
     }
 
     /**
@@ -27,19 +32,11 @@ class SubmissionService
         /** @var EntitySubmission $submission */
         foreach ($this->entitySubmissionTable->findFiltered($clientId, $campaignId) as $submission) {
             $campaign = $submission->getCampaign();
-            $result[] = [
-                'id' => $submission->getId(),
+            $result[] = $this->entitySubmissionService->getPreparedSubmissionData($submission) + [
                 'clientId' => $submission->getClient()->getId(),
                 'clientName' => $submission->getClient()->getName(),
-                'campaignId' => $campaign?->getId(),
                 'campaignLabel' => $campaign?->getLabel(),
-                'analysisLabel' => $submission->getAnalysisLabel(),
-                'version' => $submission->getVersion(),
-                'fileSize' => $submission->getFileSize(),
-                'sha256' => $submission->getSha256(),
-                'isSigned' => $submission->isSigned(),
-                'submittedBy' => $submission->getCreator(),
-                'submittedAt' => $submission->getCreatedAt()->format(DateTimeInterface::ATOM),
+                'appreciatedBy' => $submission->getAppreciatedBy(),
             ];
         }
 
@@ -47,15 +44,23 @@ class SubmissionService
     }
 
     /**
+     * Donne ou corrige l'appréciation d'une version : sans effet sur la campagne, qu'elle soit ouverte ou clôturée.
+     *
+     * @param array{level: string, comment?: string|null} $data
+     */
+    public function appreciate(int $id, array $data): void
+    {
+        $submission = $this->getSubmission($id)
+            ->appreciate($data['level'], $data['comment'] ?? null, $this->connectedUser->getEmail());
+        $this->entitySubmissionTable->save($submission);
+    }
+
+    /**
      * @return array{path: string, downloadName: string}
      */
     public function getFile(int $id): array
     {
-        /** @var EntitySubmission|null $submission */
-        $submission = $this->entitySubmissionTable->findById($id, false);
-        if ($submission === null) {
-            throw new Exception('Ce rapport n\'existe pas.', 404);
-        }
+        $submission = $this->getSubmission($id);
         $path = $this->entitySubmissionService->getClientDirectory($submission->getClient())
             . '/' . $submission->getStoredName();
         if (!is_file($path)) {
@@ -70,5 +75,16 @@ class SubmissionService
                 $submission->getVersion()
             ),
         ];
+    }
+
+    private function getSubmission(int $id): EntitySubmission
+    {
+        /** @var EntitySubmission|null $submission */
+        $submission = $this->entitySubmissionTable->findById($id, false);
+        if ($submission === null) {
+            throw new Exception('Ce rapport n\'existe pas.', 404);
+        }
+
+        return $submission;
     }
 }

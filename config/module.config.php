@@ -30,6 +30,7 @@ use Monarc\BackOffice\Validator\InputValidator\Asset\PostAssetDataInputValidator
 use Monarc\BackOffice\Validator\InputValidator\Campaign\PostCampaignInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\Client\PostClientInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\EntitySubmission\PostEntitySubmissionInputValidator;
+use Monarc\BackOffice\Validator\InputValidator\EntitySubmission\PutAppreciationInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\Server\PostServerDataInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\Threat\PostThreatDataInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\Vulnerability\PostVulnerabilityDataInputValidator;
@@ -223,6 +224,20 @@ return [
                     'defaults' => [
                         'controller' => PipeSpec::class,
                         'middleware' => new PipeSpec(Controller\ApiEntitySubmissionsAdminController::class),
+                    ],
+                ],
+            ],
+
+            'monarc_api_entity_submission_appreciation' => [
+                'type' => 'segment',
+                'options' => [
+                    'route' => '/api/entity-submissions/:id/appreciation',
+                    'constraints' => [
+                        'id' => '[0-9]+',
+                    ],
+                    'defaults' => [
+                        'controller' => PipeSpec::class,
+                        'middleware' => new PipeSpec(Controller\ApiEntitySubmissionAppreciationController::class),
                     ],
                 ],
             ],
@@ -1004,6 +1019,7 @@ return [
             Controller\ApiEntityCampaignParticipationController::class => AutowireFactory::class,
             Controller\ApiEntitySubmissionsController::class => AutowireFactory::class,
             Controller\ApiEntitySubmissionsAdminController::class => AutowireFactory::class,
+            Controller\ApiEntitySubmissionAppreciationController::class => AutowireFactory::class,
             Controller\ApiAdminUsersController::class => AutowireFactory::class,
             Controller\ApiAdminUserTwoFAController::class => AutowireFactory::class,
             Controller\ApiAdminUsersRolesController::class => AutowireFactory::class,
@@ -1102,6 +1118,7 @@ return [
             PostClientInputValidator::class => ReflectionBasedAbstractFactory::class,
             PostCampaignInputValidator::class => ReflectionBasedAbstractFactory::class,
             PostEntitySubmissionInputValidator::class => ReflectionBasedAbstractFactory::class,
+            PutAppreciationInputValidator::class => ReflectionBasedAbstractFactory::class,
         ],
     ],
 
@@ -1276,6 +1293,7 @@ return [
             'monarc_api_campaign_clients',
             'monarc_api_campaign_models',
             'monarc_api_entity_submissions_admin',
+            'monarc_api_entity_submission_appreciation',
         ],
     ],
 ];

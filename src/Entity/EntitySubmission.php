@@ -2,6 +2,7 @@
 
 namespace Monarc\BackOffice\Entity;
 
+use DateTime;
 use Doctrine\ORM\Mapping as ORM;
 use Monarc\Core\Entity\Traits\CreateEntityTrait;
 
@@ -17,6 +18,13 @@ use Monarc\Core\Entity\Traits\CreateEntityTrait;
 class EntitySubmission
 {
     use CreateEntityTrait;
+
+    public const APPRECIATION_LEVELS = [
+        'insufficient',
+        'to_improve',
+        'satisfactory',
+        'very_satisfactory',
+    ];
 
     /**
      * @ORM\Column(name="id", type="integer", nullable=false)
@@ -73,6 +81,26 @@ class EntitySubmission
      * @ORM\Column(name="is_signed", type="boolean")
      */
     protected bool $isSigned;
+
+    /**
+     * @ORM\Column(name="appreciation_level", type="string", length=20, nullable=true)
+     */
+    protected ?string $appreciationLevel = null;
+
+    /**
+     * @ORM\Column(name="appreciation_comment", type="text", nullable=true)
+     */
+    protected ?string $appreciationComment = null;
+
+    /**
+     * @ORM\Column(name="appreciated_by", type="string", length=255, nullable=true)
+     */
+    protected ?string $appreciatedBy = null;
+
+    /**
+     * @ORM\Column(name="appreciated_at", type="datetime", nullable=true)
+     */
+    protected ?DateTime $appreciatedAt = null;
 
     public function __construct(
         Client $client,
@@ -146,5 +174,38 @@ class EntitySubmission
     public function isSigned(): bool
     {
         return $this->isSigned;
+    }
+
+    public function getAppreciationLevel(): ?string
+    {
+        return $this->appreciationLevel;
+    }
+
+    public function getAppreciationComment(): ?string
+    {
+        return $this->appreciationComment;
+    }
+
+    public function getAppreciatedBy(): ?string
+    {
+        return $this->appreciatedBy;
+    }
+
+    public function getAppreciatedAt(): ?DateTime
+    {
+        return $this->appreciatedAt;
+    }
+
+    /**
+     * Donne ou corrige l'appréciation de l'ASIN sur cette version.
+     */
+    public function appreciate(string $level, ?string $comment, string $appreciatedBy): self
+    {
+        $this->appreciationLevel = $level;
+        $this->appreciationComment = $comment === '' ? null : $comment;
+        $this->appreciatedBy = $appreciatedBy;
+        $this->appreciatedAt = new DateTime();
+
+        return $this;
     }
 }
