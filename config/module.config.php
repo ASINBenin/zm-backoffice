@@ -12,7 +12,9 @@ use Laminas\Mvc\Middleware\PipeSpec;
 use Laminas\ServiceManager\AbstractFactory\ReflectionBasedAbstractFactory;
 use Monarc\BackOffice\Controller;
 use Monarc\BackOffice\Middleware\AnrValidationMiddleware;
+use Monarc\BackOffice\Command\NotifyExpiredInvitationsCommand;
 use Monarc\BackOffice\Middleware\EntityApiTokenMiddleware;
+use Monarc\BackOffice\Table\CampaignNotificationTable;
 use Monarc\BackOffice\Table\CampaignTable;
 use Monarc\BackOffice\Table\ClientApiTokenTable;
 use Monarc\BackOffice\Table\ClientModelTable;
@@ -1079,12 +1081,14 @@ return [
             ClientTable::class => ClientEntityManagerFactory::class,
             ClientModelTable::class => ClientEntityManagerFactory::class,
             CampaignTable::class => ClientEntityManagerFactory::class,
+            CampaignNotificationTable::class => ClientEntityManagerFactory::class,
             ClientApiTokenTable::class => ClientEntityManagerFactory::class,
             EntitySubmissionTable::class => ClientEntityManagerFactory::class,
 
             ServerService::class => AutowireFactory::class,
             CampaignService::class => AutowireFactory::class,
             CampaignNotificationService::class => AutowireFactory::class,
+            NotifyExpiredInvitationsCommand::class => AutowireFactory::class,
             ClientApiTokenService::class => AutowireFactory::class,
             EntityCampaignService::class => AutowireFactory::class,
             EntitySubmissionService::class => AutowireFactory::class,

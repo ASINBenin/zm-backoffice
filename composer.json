@@ -63,6 +63,7 @@
             "Monarc\\BackOffice\\": "/src"
         }
     },
+    "bin": ["bin/console"],
     "minimum-stability": "dev",
     "prefer-stable": true,
     "config": {

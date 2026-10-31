@@ -3,9 +3,13 @@
 namespace Monarc\BackOffice\Service;
 
 use Monarc\BackOffice\Entity\Campaign;
+use DateTimeImmutable;
+use Monarc\BackOffice\Entity\CampaignNotification;
 use Monarc\BackOffice\Entity\CampaignParticipant;
 use Monarc\BackOffice\Entity\Client;
 use Monarc\BackOffice\Entity\EntitySubmission;
+use Monarc\BackOffice\Table\CampaignNotificationTable;
+use Monarc\BackOffice\Table\CampaignTable;
 use Monarc\Core\Entity\UserRole;
 use Monarc\Core\Service\ConfigService;
 use Monarc\Core\Service\MailService;
@@ -28,7 +32,9 @@ class CampaignNotificationService
     public function __construct(
         private MailService $mailService,
         private ConfigService $configService,
-        private UserTable $userTable
+        private UserTable $userTable,
+        private CampaignTable $campaignTable,
+        private CampaignNotificationTable $campaignNotificationTable
     ) {
     }
 
@@ -129,6 +135,52 @@ class CampaignNotificationService
     }
 
     /**
+     * Tâche quotidienne : pour chaque campagne dont la date limite de réponse est passée, les administrateurs
+     * apprennent quelles entités n'ont pas participé. Un seul courriel par campagne, même si la tâche repasse.
+     *
+     * @return int Nombre de campagnes traitées.
+     */
+    public function notifyExpiredInvitations(): int
+    {
+        $campaignsCount = 0;
+        foreach ($this->campaignTable->findPublishedWithDeadlineBefore(new DateTimeImmutable('today')) as $campaign) {
+            if ($this->campaignNotificationTable->isSent($campaign, CampaignNotification::TYPE_INVITATIONS_EXPIRED)) {
+                continue;
+            }
+
+            $silentEntities = [];
+            foreach ($campaign->getParticipants() as $participant) {
+                if (!$participant->isParticipating()) {
+                    $silentEntities[] = '<li>' . $this->escape($participant->getClient()->getName()) . '</li>';
+                }
+            }
+            if ($silentEntities !== []) {
+                $sentCount = $this->send(
+                    $this->getAdministratorAddresses(),
+                    sprintf('[MONARC] Campagne « %s » : invitations expirées', $campaign->getLabel()),
+                    sprintf(
+                        '<p>La date limite de réponse de la campagne « %s » est dépassée (%s).</p>'
+                        . '<p>Entités qui n\'ont pas participé :</p><ul>%s</ul>',
+                        $this->escape($campaign->getLabel()),
+                        $campaign->getResponseDeadline()->format('d/m/Y'),
+                        implode('', $silentEntities)
+                    )
+                );
+                if ($sentCount === 0) {
+                    // Aucun courriel parti : la tâche de demain réessaie
+                    continue;
+                }
+            }
+            $this->campaignNotificationTable->save(
+                new CampaignNotification($campaign, CampaignNotification::TYPE_INVITATIONS_EXPIRED)
+            );
+            $campaignsCount++;
+        }
+
+        return $campaignsCount;
+    }
+
+    /**
      * Administrateurs ASIN des campagnes.
      *
      * @return string[]
@@ -162,15 +214,21 @@ class CampaignNotificationService
 
     /**
      * @param string[] $addresses
+     *
+     * @return int Nombre de courriels partis.
      */
-    private function send(array $addresses, string $subject, string $message): void
+    private function send(array $addresses, string $subject, string $message): int
     {
+        $sentCount = 0;
         foreach (array_unique(array_filter($addresses)) as $address) {
             try {
                 $this->mailService->send($address, $subject, $message, $this->configService->getEmail());
+                $sentCount++;
             } catch (Throwable $e) {
                 error_log(sprintf('Campaign notification "%s" to %s failed: %s', $subject, $address, $e->getMessage()));
             }
         }
+
+        return $sentCount;
     }
 }

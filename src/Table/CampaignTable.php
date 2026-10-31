@@ -3,6 +3,7 @@
 namespace Monarc\BackOffice\Table;
 
 use DateTime;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManager;
 use Monarc\BackOffice\Entity\Campaign;
 use Monarc\BackOffice\Entity\Client;
@@ -29,6 +30,22 @@ class CampaignTable extends AbstractTable
             ->select('c.modelId')
             ->getQuery()
             ->getSingleColumnResult());
+    }
+
+    /**
+     * Campagnes publiées dont la date limite de réponse est dépassée.
+     *
+     * @return Campaign[]
+     */
+    public function findPublishedWithDeadlineBefore(DateTimeImmutable $today): array
+    {
+        return $this->getRepository()->createQueryBuilder('c')
+            ->where('c.status = :status')
+            ->andWhere('c.responseDeadline < :today')
+            ->setParameter('status', Campaign::STATUS_PUBLISHED)
+            ->setParameter('today', $today, 'date_immutable')
+            ->getQuery()
+            ->getResult();
     }
 
     /**
