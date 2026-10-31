@@ -19,6 +19,7 @@ use Monarc\BackOffice\Table\ClientModelTable;
 use Monarc\BackOffice\Table\ClientTable;
 use Monarc\BackOffice\Table\EntitySubmissionTable;
 use Monarc\BackOffice\Table\ServerTable;
+use Monarc\BackOffice\Service\CampaignNotificationService;
 use Monarc\BackOffice\Service\CampaignService;
 use Monarc\BackOffice\Service\ClientApiTokenService;
 use Monarc\BackOffice\Service\EntityCampaignService;
@@ -1083,6 +1084,7 @@ return [
 
             ServerService::class => AutowireFactory::class,
             CampaignService::class => AutowireFactory::class,
+            CampaignNotificationService::class => AutowireFactory::class,
             ClientApiTokenService::class => AutowireFactory::class,
             EntityCampaignService::class => AutowireFactory::class,
             EntitySubmissionService::class => AutowireFactory::class,

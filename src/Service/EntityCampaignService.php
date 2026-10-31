@@ -16,8 +16,10 @@ use Monarc\Core\Exception\Exception;
  */
 class EntityCampaignService
 {
-    public function __construct(private CampaignTable $campaignTable)
-    {
+    public function __construct(
+        private CampaignTable $campaignTable,
+        private CampaignNotificationService $campaignNotificationService
+    ) {
     }
 
     /**
@@ -61,6 +63,7 @@ class EntityCampaignService
             }
             $participant->participate()->setUpdater($client->getProxyAlias());
             $this->campaignTable->save($campaign);
+            $this->campaignNotificationService->notifyParticipation($campaign, $client);
         }
 
         return ['participation' => ['status' => $participant->getStatus()]];

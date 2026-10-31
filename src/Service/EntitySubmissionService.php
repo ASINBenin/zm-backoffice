@@ -23,7 +23,8 @@ class EntitySubmissionService
 
     public function __construct(
         private EntitySubmissionTable $entitySubmissionTable,
-        private CampaignTable $campaignTable
+        private CampaignTable $campaignTable,
+        private CampaignNotificationService $campaignNotificationService
     ) {
     }
 
@@ -68,6 +69,8 @@ class EntitySubmissionService
 
             throw $e;
         }
+
+        $this->campaignNotificationService->notifySubmission($submission);
 
         return ['submission' => $this->getPreparedSubmissionData($submission)];
     }

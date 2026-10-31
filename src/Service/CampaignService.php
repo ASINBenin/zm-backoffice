@@ -25,6 +25,7 @@ class CampaignService
         private CampaignTable $campaignTable,
         private ClientTable $clientTable,
         private ModelTable $modelTable,
+        private CampaignNotificationService $campaignNotificationService,
         ConnectedUserService $connectedUserService
     ) {
         $this->connectedUser = $connectedUserService->getConnectedUser();
@@ -156,6 +157,7 @@ class CampaignService
 
         $campaign->publish()->setUpdater($this->connectedUser->getEmail());
         $this->campaignTable->save($campaign);
+        $this->campaignNotificationService->notifyPublished($campaign);
     }
 
     /**
@@ -171,6 +173,7 @@ class CampaignService
 
         $campaign->close()->setUpdater($this->connectedUser->getEmail());
         $this->campaignTable->save($campaign);
+        $this->campaignNotificationService->notifyClosed($campaign);
     }
 
     /**

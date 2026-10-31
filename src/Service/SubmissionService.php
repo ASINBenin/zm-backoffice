@@ -18,6 +18,7 @@ class SubmissionService
     public function __construct(
         private EntitySubmissionTable $entitySubmissionTable,
         private EntitySubmissionService $entitySubmissionService,
+        private CampaignNotificationService $campaignNotificationService,
         ConnectedUserService $connectedUserService
     ) {
         $this->connectedUser = $connectedUserService->getConnectedUser();
@@ -53,6 +54,7 @@ class SubmissionService
         $submission = $this->getSubmission($id)
             ->appreciate($data['level'], $data['comment'] ?? null, $this->connectedUser->getEmail());
         $this->entitySubmissionTable->save($submission);
+        $this->campaignNotificationService->notifyAppreciation($submission);
     }
 
     /**
