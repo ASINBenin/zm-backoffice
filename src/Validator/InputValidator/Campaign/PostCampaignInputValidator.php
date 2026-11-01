@@ -27,6 +27,7 @@ class PostCampaignInputValidator extends AbstractInputValidator
                 'required' => false,
                 'allow_empty' => true,
                 'filters' => [['name' => StringTrim::class]],
+                'validators' => [['name' => StringLength::class, 'options' => ['max' => 2000]]],
             ],
             [
                 'name' => 'modelId',
