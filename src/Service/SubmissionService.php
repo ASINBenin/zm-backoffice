@@ -19,6 +19,7 @@ class SubmissionService
         private EntitySubmissionTable $entitySubmissionTable,
         private EntitySubmissionService $entitySubmissionService,
         private CampaignNotificationService $campaignNotificationService,
+        private HtmlSanitizer $htmlSanitizer,
         ConnectedUserService $connectedUserService
     ) {
         $this->connectedUser = $connectedUserService->getConnectedUser();
@@ -46,13 +47,15 @@ class SubmissionService
 
     /**
      * Donne ou corrige l'appréciation d'une version : sans effet sur la campagne, qu'elle soit ouverte ou clôturée.
+     * Le commentaire mis en forme est nettoyé avant d'être enregistré, puis affiché tel quel au BO, au FO et par mail.
      *
      * @param array{level: string, comment?: string|null} $data
      */
     public function appreciate(int $id, array $data): void
     {
+        $comment = $this->htmlSanitizer->sanitize((string)($data['comment'] ?? ''));
         $submission = $this->getSubmission($id)
-            ->appreciate($data['level'], $data['comment'] ?? null, $this->connectedUser->getEmail());
+            ->appreciate($data['level'], $comment, $this->connectedUser->getEmail());
         $this->entitySubmissionTable->save($submission);
         $this->campaignNotificationService->notifyAppreciation($submission);
     }

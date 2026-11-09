@@ -109,6 +109,14 @@ class PostClientInputValidator extends AbstractInputValidator
                 'filters' => [],
                 'validators' => [],
             ],
+            [
+                // Sans filtre : absent, il reste null et le client garde la double authentification par défaut
+                'name' => 'twoFactorAuthEnforced',
+                'required' => false,
+                'allow_empty' => true,
+                'filters' => [],
+                'validators' => [],
+            ],
         ];
     }
 }

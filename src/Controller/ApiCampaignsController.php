@@ -5,7 +5,9 @@ namespace Monarc\BackOffice\Controller;
 use Laminas\Mvc\Controller\AbstractRestfulController;
 use Monarc\BackOffice\InputFormatter\Campaign\GetCampaignsInputFormatter;
 use Monarc\BackOffice\Service\CampaignService;
+use Monarc\BackOffice\Validator\InputValidator\Campaign\PostCampaignDatesInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\Campaign\PostCampaignInputValidator;
+use Monarc\BackOffice\Validator\InputValidator\Campaign\PostCampaignParticipantsInputValidator;
 use Monarc\Core\Controller\Handler\ControllerRequestResponseHandlerTrait;
 use Monarc\Core\Exception\Exception;
 
@@ -16,7 +18,9 @@ class ApiCampaignsController extends AbstractRestfulController
     public function __construct(
         private CampaignService $campaignService,
         private GetCampaignsInputFormatter $getCampaignsInputFormatter,
-        private PostCampaignInputValidator $postCampaignInputValidator
+        private PostCampaignInputValidator $postCampaignInputValidator,
+        private PostCampaignDatesInputValidator $postCampaignDatesInputValidator,
+        private PostCampaignParticipantsInputValidator $postCampaignParticipantsInputValidator
     ) {
     }
 
@@ -70,6 +74,29 @@ class ApiCampaignsController extends AbstractRestfulController
     public function closeAction()
     {
         $this->campaignService->close($this->getPostedCampaignId());
+
+        return $this->getSuccessfulJsonResponse();
+    }
+
+    public function datesAction()
+    {
+        $id = $this->getPostedCampaignId();
+        $data = $this->processBodyContent($this->getRequest());
+        $this->validatePostParams($this->postCampaignDatesInputValidator, $data);
+        $this->campaignService->extendDates($id, $this->postCampaignDatesInputValidator->getValidData());
+
+        return $this->getSuccessfulJsonResponse();
+    }
+
+    public function participantsAction()
+    {
+        $id = $this->getPostedCampaignId();
+        $data = $this->processBodyContent($this->getRequest());
+        $this->validatePostParams($this->postCampaignParticipantsInputValidator, $data);
+        $this->campaignService->addParticipants(
+            $id,
+            $this->postCampaignParticipantsInputValidator->getValidData()['clientIds']
+        );
 
         return $this->getSuccessfulJsonResponse();
     }

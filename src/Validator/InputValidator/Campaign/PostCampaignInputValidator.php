@@ -35,9 +35,9 @@ class PostCampaignInputValidator extends AbstractInputValidator
                 'filters' => [['name' => ToInt::class]],
                 'validators' => [['name' => GreaterThan::class, 'options' => ['min' => 0]]],
             ],
-            $this->getDateRule('startDate'),
-            $this->getDateRule('responseDeadline'),
-            $this->getDateRule('endDate'),
+            self::getDateRule('startDate'),
+            self::getDateRule('responseDeadline'),
+            self::getDateRule('endDate'),
             [
                 'name' => 'isSignatureRequired',
                 'required' => false,
@@ -54,7 +54,10 @@ class PostCampaignInputValidator extends AbstractInputValidator
         ];
     }
 
-    private function getDateRule(string $name): array
+    /**
+     * Date AAAA-MM-JJ obligatoire, partagée avec la saisie des nouvelles dates d'une campagne publiée.
+     */
+    public static function getDateRule(string $name): array
     {
         return [
             'name' => $name,

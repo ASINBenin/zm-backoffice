@@ -10,7 +10,8 @@ use Monarc\Core\Validator\InputValidator\AbstractInputValidator;
 
 class PutAppreciationInputValidator extends AbstractInputValidator
 {
-    private const COMMENT_MAX_LENGTH = 5000;
+    // HTML de l'éditeur : les balises comptent dans la longueur
+    private const COMMENT_MAX_LENGTH = 20000;
 
     protected function getRules(): array
     {

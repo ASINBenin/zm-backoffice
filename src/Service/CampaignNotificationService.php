@@ -38,27 +38,37 @@ class CampaignNotificationService
     ) {
     }
 
-    /**
-     * Invitation : chaque entité invitée la reçoit à l'adresse de contact de sa fiche et à celle de son premier
-     * utilisateur.
-     */
     public function notifyPublished(Campaign $campaign): void
     {
-        foreach ($campaign->getParticipants() as $participant) {
+        $this->notifyInvited($campaign, $campaign->getParticipants()->toArray());
+    }
+
+    /**
+     * Invitation, à la publication ou pour une entité ajoutée ensuite : chaque entité la reçoit à l'adresse de contact
+     * de sa fiche et à celle de son premier utilisateur.
+     *
+     * @param CampaignParticipant[] $participants
+     */
+    public function notifyInvited(Campaign $campaign, array $participants): void
+    {
+        foreach ($participants as $participant) {
             $this->send(
                 $this->getEntityAddresses($participant->getClient()),
                 sprintf('[MONARC] Invitation à la campagne « %s »', $campaign->getLabel()),
                 sprintf(
-                    '<p>Votre entité, %s, est invitée à la campagne « %s ».</p>%s'
-                    . '<p>Début : %s. <strong>Date limite de réponse : %s</strong>. Fin : %s.</p>%s'
-                    . '<p>Pour participer, ouvrez le menu « Campagnes » de votre MONARC.</p>',
+                    '<p>Votre entité, %s, est invitée à la campagne « %s ». La participation est obligatoire.</p>%s'
+                    . '<p>Début : %s. <strong>Date de démarrage attendue : %s</strong>. Fin : %s.</p>%s'
+                    . '<p>Pour participer, ouvrez le menu « Campagnes » de votre MONARC.</p>%s',
                     $this->escape($participant->getClient()->getName()),
                     $this->escape($campaign->getLabel()),
-                    $campaign->getDescription() === null ? '' : '<p>' . $this->escape($campaign->getDescription()) . '</p>',
+                    (string)$campaign->getDescription() === ''
+                        ? ''
+                        : '<p>' . $this->escape($campaign->getDescription()) . '</p>',
                     $campaign->getStartDate()->format('d/m/Y'),
                     $campaign->getResponseDeadline()->format('d/m/Y'),
                     $campaign->getEndDate()->format('d/m/Y'),
-                    $campaign->isSignatureRequired() ? '<p>Le rapport devra être signé.</p>' : ''
+                    $campaign->isSignatureRequired() ? '<p>Le rapport devra être signé.</p>' : '',
+                    $this->getEntityCampaignsLink($participant->getClient(), $campaign)
                 )
             );
         }
@@ -70,9 +80,10 @@ class CampaignNotificationService
             $this->getAdministratorAddresses(),
             sprintf('[MONARC] %s participe à la campagne « %s »', $client->getName(), $campaign->getLabel()),
             sprintf(
-                '<p>L\'entité %s participe à la campagne « %s » : son analyse a été créée.</p>',
+                '<p>L\'entité %s participe à la campagne « %s » : son analyse a été créée.</p>%s',
                 $this->escape($client->getName()),
-                $this->escape($campaign->getLabel())
+                $this->escape($campaign->getLabel()),
+                $this->getBackOfficeCampaignLink($campaign)
             )
         );
     }
@@ -84,12 +95,15 @@ class CampaignNotificationService
             sprintf('[MONARC] %s a envoyé un rapport', $submission->getClient()->getName()),
             sprintf(
                 '<p>L\'entité %s a envoyé la version %d du rapport de l\'analyse « %s » (%s), par %s.</p>'
-                . '<p>Le rapport est disponible dans l\'écran « Rapports soumis » du Back-Office.</p>',
+                . '<p>Le rapport est disponible dans le Back-Office.</p>%s',
                 $this->escape($submission->getClient()->getName()),
                 $submission->getVersion(),
                 $this->escape($submission->getAnalysisLabel()),
                 $this->getCampaignText($submission),
-                $this->escape($submission->getCreator())
+                $this->escape($submission->getCreator()),
+                $submission->getCampaign() === null
+                    ? $this->getLink($this->configService->getHost() . '/#/admin/submissions', 'Ouvrir les rapports')
+                    : $this->getBackOfficeCampaignLink($submission->getCampaign())
             )
         );
     }
@@ -106,14 +120,41 @@ class CampaignNotificationService
             sprintf(
                 '<p>L\'ASIN a apprécié la version %d du rapport de l\'analyse « %s » (%s).</p>'
                 . '<p><strong>Appréciation : %s</strong></p>%s'
-                . '<p>Elle est visible dans la fenêtre « Rapports » de votre MONARC.</p>',
+                . '<p>Elle est visible dans les rapports de l\'analyse, dans votre MONARC.</p>%s',
                 $submission->getVersion(),
                 $this->escape($submission->getAnalysisLabel()),
                 $this->getCampaignText($submission),
                 self::APPRECIATION_LABELS[$submission->getAppreciationLevel()],
-                $comment === null ? '' : '<p>' . nl2br($this->escape($comment)) . '</p>'
+                // Commentaire déjà nettoyé à l'enregistrement (HtmlSanitizer)
+                $comment ?? '',
+                $this->getEntityCampaignsLink($submission->getClient(), $submission->getCampaign())
             )
         );
+    }
+
+    /**
+     * Nouvelles dates envoyées à toutes les entités invitées. Avec une date de démarrage attendue repoussée, le constat
+     * des entités en retard sera refait à la nouvelle échéance.
+     */
+    public function notifyDatesExtended(Campaign $campaign, bool $isDeadlineExtended): void
+    {
+        if ($isDeadlineExtended) {
+            $this->campaignNotificationTable->removeSent($campaign, CampaignNotification::TYPE_INVITATIONS_EXPIRED);
+        }
+        foreach ($campaign->getParticipants() as $participant) {
+            $this->send(
+                $this->getEntityAddresses($participant->getClient()),
+                sprintf('[MONARC] Campagne « %s » : dates repoussées', $campaign->getLabel()),
+                sprintf(
+                    '<p>Les dates de la campagne « %s » ont été repoussées.</p>'
+                    . '<p><strong>Date de démarrage attendue : %s</strong>. Fin : %s.</p>%s',
+                    $this->escape($campaign->getLabel()),
+                    $campaign->getResponseDeadline()->format('d/m/Y'),
+                    $campaign->getEndDate()->format('d/m/Y'),
+                    $this->getEntityCampaignsLink($participant->getClient(), $campaign)
+                )
+            );
+        }
     }
 
     public function notifyClosed(Campaign $campaign): void
@@ -135,8 +176,9 @@ class CampaignNotificationService
     }
 
     /**
-     * Tâche quotidienne : pour chaque campagne dont la date limite de réponse est passée, les administrateurs
-     * apprennent quelles entités n'ont pas participé. Un seul courriel par campagne, même si la tâche repasse.
+     * Tâche quotidienne : pour chaque campagne dont la date de démarrage attendue est passée, les administrateurs
+     * apprennent quelles entités n'ont pas encore démarré (elles le peuvent jusqu'à la fin). Un seul courriel par
+     * campagne, même si la tâche repasse.
      *
      * @return int Nombre de campagnes traitées.
      */
@@ -157,13 +199,14 @@ class CampaignNotificationService
             if ($silentEntities !== []) {
                 $sentCount = $this->send(
                     $this->getAdministratorAddresses(),
-                    sprintf('[MONARC] Campagne « %s » : invitations expirées', $campaign->getLabel()),
+                    sprintf('[MONARC] Campagne « %s » : entités en retard', $campaign->getLabel()),
                     sprintf(
-                        '<p>La date limite de réponse de la campagne « %s » est dépassée (%s).</p>'
-                        . '<p>Entités qui n\'ont pas participé :</p><ul>%s</ul>',
+                        '<p>La date de démarrage attendue de la campagne « %s » est passée (%s).</p>'
+                        . '<p>Entités qui n\'ont pas encore démarré :</p><ul>%s</ul>%s',
                         $this->escape($campaign->getLabel()),
                         $campaign->getResponseDeadline()->format('d/m/Y'),
-                        implode('', $silentEntities)
+                        implode('', $silentEntities),
+                        $this->getBackOfficeCampaignLink($campaign)
                     )
                 );
                 if ($sentCount === 0) {
@@ -205,6 +248,39 @@ class CampaignNotificationService
         return $submission->getCampaign() === null
             ? 'hors campagne'
             : 'campagne « ' . $this->escape($submission->getCampaign()->getLabel()) . ' »';
+    }
+
+    /**
+     * Page de la campagne dans l'entité, servie sous /<alias>/ de l'adresse publique des entités. L'entité ne connaît
+     * pas encore l'identifiant local de la campagne : elle l'ouvre à partir de celui du BO. Sans campagne (rapport
+     * hors campagne), le lien mène à l'écran « Campagnes ». Sans adresse publique (installation hors Docker), le
+     * courriel garde seulement le texte.
+     */
+    private function getEntityCampaignsLink(Client $client, ?Campaign $campaign): string
+    {
+        $entitiesHost = (string)$this->configService->getConfigOption('entitiesPublicHost', '');
+        if ($entitiesHost === '') {
+            return '';
+        }
+
+        return $this->getLink(
+            rtrim($entitiesHost, '/') . '/' . rawurlencode($client->getProxyAlias()) . '/#/client/campaigns'
+            . ($campaign === null ? '' : '?campaign=' . $campaign->getId()),
+            $campaign === null ? 'Ouvrir les campagnes dans MONARC' : 'Ouvrir la campagne dans MONARC'
+        );
+    }
+
+    private function getBackOfficeCampaignLink(Campaign $campaign): string
+    {
+        return $this->getLink(
+            $this->configService->getHost() . '/#/admin/campaigns/' . $campaign->getId(),
+            'Ouvrir la campagne dans le Back-Office'
+        );
+    }
+
+    private function getLink(string $url, string $label): string
+    {
+        return sprintf('<p><a href="%s">%s</a></p>', $this->escape($url), $this->escape($label));
     }
 
     private function escape(string $text): string

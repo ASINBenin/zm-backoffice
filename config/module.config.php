@@ -23,13 +23,17 @@ use Monarc\BackOffice\Table\EntitySubmissionTable;
 use Monarc\BackOffice\Table\ServerTable;
 use Monarc\BackOffice\Service\CampaignNotificationService;
 use Monarc\BackOffice\Service\CampaignService;
+use Monarc\BackOffice\Service\CampaignStatisticsService;
 use Monarc\BackOffice\Service\ClientApiTokenService;
 use Monarc\BackOffice\Service\EntityCampaignService;
 use Monarc\BackOffice\Service\EntitySubmissionService;
 use Monarc\BackOffice\Service\SubmissionService;
+use Monarc\BackOffice\Service\HtmlSanitizer;
 use Monarc\BackOffice\Service\ClientService;
 use Monarc\BackOffice\Service\ServerService;
 use Monarc\BackOffice\Validator\InputValidator\Asset\PostAssetDataInputValidator;
+use Monarc\BackOffice\Validator\InputValidator\Campaign\PostCampaignDatesInputValidator;
+use Monarc\BackOffice\Validator\InputValidator\Campaign\PostCampaignParticipantsInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\Campaign\PostCampaignInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\Client\PostClientInputValidator;
 use Monarc\BackOffice\Validator\InputValidator\EntitySubmission\PostEntitySubmissionInputValidator;
@@ -116,7 +120,7 @@ return [
                     'route' => '/api/campaigns/:id/:action',
                     'constraints' => [
                         'id' => '[0-9]+',
-                        'action' => 'publish|close',
+                        'action' => 'publish|close|dates|participants',
                     ],
                     'defaults' => [
                         'controller' => Controller\ApiCampaignsController::class,
@@ -140,6 +144,19 @@ return [
                     'route' => '/api/campaign-models',
                     'defaults' => [
                         'controller' => Controller\ApiCampaignModelsController::class,
+                    ],
+                ],
+            ],
+
+            'monarc_api_campaign_statistics' => [
+                'type' => 'segment',
+                'options' => [
+                    'route' => '/api/campaign-statistics[/:id]',
+                    'constraints' => [
+                        'id' => '[0-9]+',
+                    ],
+                    'defaults' => [
+                        'controller' => Controller\ApiCampaignStatisticsController::class,
                     ],
                 ],
             ],
@@ -1016,6 +1033,7 @@ return [
             Controller\ApiCampaignsController::class => AutowireFactory::class,
             Controller\ApiCampaignClientsController::class => AutowireFactory::class,
             Controller\ApiCampaignModelsController::class => AutowireFactory::class,
+            Controller\ApiCampaignStatisticsController::class => AutowireFactory::class,
             Controller\ApiClientApiTokenController::class => AutowireFactory::class,
             Controller\ApiEntityMeController::class => AutowireFactory::class,
             Controller\ApiEntityCampaignsController::class => AutowireFactory::class,
@@ -1087,12 +1105,14 @@ return [
 
             ServerService::class => AutowireFactory::class,
             CampaignService::class => AutowireFactory::class,
+            CampaignStatisticsService::class => AutowireFactory::class,
             CampaignNotificationService::class => AutowireFactory::class,
             NotifyExpiredInvitationsCommand::class => AutowireFactory::class,
             ClientApiTokenService::class => AutowireFactory::class,
             EntityCampaignService::class => AutowireFactory::class,
             EntitySubmissionService::class => AutowireFactory::class,
             SubmissionService::class => AutowireFactory::class,
+            HtmlSanitizer::class => AutowireFactory::class,
             ClientService::class => ReflectionBasedAbstractFactory::class,
 
             /* Validators */
@@ -1123,6 +1143,8 @@ return [
             PostServerDataInputValidator::class => ReflectionBasedAbstractFactory::class,
             PostClientInputValidator::class => ReflectionBasedAbstractFactory::class,
             PostCampaignInputValidator::class => ReflectionBasedAbstractFactory::class,
+            PostCampaignDatesInputValidator::class => ReflectionBasedAbstractFactory::class,
+            PostCampaignParticipantsInputValidator::class => ReflectionBasedAbstractFactory::class,
             PostEntitySubmissionInputValidator::class => ReflectionBasedAbstractFactory::class,
             PutAppreciationInputValidator::class => ReflectionBasedAbstractFactory::class,
         ],
@@ -1298,6 +1320,7 @@ return [
             'monarc_api_campaign_status',
             'monarc_api_campaign_clients',
             'monarc_api_campaign_models',
+            'monarc_api_campaign_statistics',
             'monarc_api_entity_submissions_admin',
             'monarc_api_entity_submission_appreciation',
         ],

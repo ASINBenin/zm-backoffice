@@ -131,6 +131,73 @@ class CampaignService
     }
 
     /**
+     * Repousse la date de démarrage attendue et la date de fin d'une campagne publiée. Une date ne peut pas être
+     * avancée : des entités ont pu s'organiser sur l'échéance annoncée.
+     */
+    public function extendDates(int $id, array $data): void
+    {
+        /** @var Campaign $campaign */
+        $campaign = $this->campaignTable->findById($id);
+        if (!$campaign->isPublished()) {
+            throw new Exception('Seules les dates d\'une campagne publiée peuvent être repoussées.', 412);
+        }
+
+        $responseDeadline = $this->toDate($data['responseDeadline']);
+        $endDate = $this->toDate($data['endDate']);
+        if ($responseDeadline < $campaign->getResponseDeadline() || $endDate < $campaign->getEndDate()) {
+            throw new Exception('Une date peut seulement être repoussée, pas avancée.', 412);
+        }
+        if ($responseDeadline > $endDate) {
+            throw new Exception('La date de démarrage attendue doit précéder la date de fin.', 412);
+        }
+        $isDeadlineExtended = $responseDeadline > $campaign->getResponseDeadline();
+        if (!$isDeadlineExtended && $endDate == $campaign->getEndDate()) {
+            return;
+        }
+
+        $campaign->setDates($campaign->getStartDate(), $responseDeadline, $endDate)
+            ->setUpdater($this->connectedUser->getEmail());
+        $this->campaignTable->save($campaign);
+        $this->campaignNotificationService->notifyDatesExtended($campaign, $isDeadlineExtended);
+    }
+
+    /**
+     * Invite des entités à une campagne publiée, avec les mêmes dates que les autres : elles peuvent participer
+     * jusqu'à la fin, même après la date de démarrage attendue.
+     *
+     * @param int[] $clientIds
+     */
+    public function addParticipants(int $id, array $clientIds): void
+    {
+        /** @var Campaign $campaign */
+        $campaign = $this->campaignTable->findById($id);
+        if (!$campaign->isPublished()) {
+            throw new Exception('Des entités peuvent être ajoutées seulement à une campagne publiée.', 412);
+        }
+        if ($campaign->getEndDate() < new DateTimeImmutable('today')) {
+            throw new Exception('La campagne est terminée : repoussez sa date de fin avant d\'inviter une entité.', 412);
+        }
+        if ($clientIds === []) {
+            throw new Exception('Choisissez au moins une entité.', 412);
+        }
+
+        $invitedIds = array_map(
+            static fn (CampaignParticipant $participant) => $participant->getClient()->getId(),
+            $campaign->getParticipants()->toArray()
+        );
+        $added = [];
+        foreach ($this->findClients($clientIds) as $client) {
+            if (\in_array($client->getId(), $invitedIds, true)) {
+                throw new Exception(sprintf('L\'entité %s est déjà invitée.', $client->getName()), 412);
+            }
+            $added[] = (new CampaignParticipant($campaign, $client))->setCreator($this->connectedUser->getEmail());
+        }
+
+        $this->campaignTable->save($campaign);
+        $this->campaignNotificationService->notifyInvited($campaign, $added);
+    }
+
+    /**
      * Supprime un brouillon.
      */
     public function delete(int $id): void
@@ -148,10 +215,10 @@ class CampaignService
             throw new Exception('Invitez au moins une entité avant de publier la campagne.', 412);
         }
         if ($campaign->getResponseDeadline() < new DateTimeImmutable('today')) {
-            throw new Exception('La date limite de réponse est dépassée.', 412);
+            throw new Exception('La date de démarrage attendue est passée.', 412);
         }
 
-        $model = $this->validateModel($campaign->getModelId(), $campaign);
+        $model = $this->validateModel($campaign->getModelId());
         $model->setAreScalesUpdatable(false)->setUpdater($this->connectedUser->getEmail());
         $this->modelTable->save($model);
 
@@ -178,13 +245,17 @@ class CampaignService
 
     /**
      * Les entités travaillent sur le modèle d'une campagne publiée ou clôturée : il ne doit plus changer.
+     * Pour le faire évoluer, on le duplique.
      */
     public function assertModelIsEditable(int $modelId): void
     {
-        $campaign = $this->campaignTable->findOneByModelId($modelId);
-        if ($campaign !== null && !$campaign->isDraft()) {
+        $campaign = $this->campaignTable->findOneNotDraftByModelId($modelId);
+        if ($campaign !== null) {
             throw new Exception(
-                sprintf('Ce modèle est figé : il est utilisé par la campagne « %s ».', $campaign->getLabel()),
+                sprintf(
+                    'Ce modèle est figé : il est utilisé par la campagne « %s ». Dupliquez-le pour le modifier.',
+                    $campaign->getLabel()
+                ),
                 412
             );
         }
@@ -214,12 +285,12 @@ class CampaignService
         $endDate = $this->toDate($data['endDate']);
         if ($startDate > $responseDeadline || $responseDeadline > $endDate) {
             throw new Exception(
-                'Les dates doivent respecter : début ≤ date limite de réponse ≤ fin.',
+                'Les dates doivent respecter : début ≤ date de démarrage attendue ≤ fin.',
                 412
             );
         }
 
-        $this->validateModel((int)$data['modelId'], $campaign);
+        $this->validateModel((int)$data['modelId']);
 
         $campaign->setLabel($data['label'])
             ->setDescription($data['description'] ?? null)
@@ -231,9 +302,9 @@ class CampaignService
     }
 
     /**
-     * Modèle actif, spécifique et libre (ou déjà celui de la campagne).
+     * Modèle actif et spécifique. Plusieurs campagnes peuvent l'utiliser.
      */
-    private function validateModel(int $modelId, Campaign $campaign): Model
+    private function validateModel(int $modelId): Model
     {
         /** @var Model|null $model */
         $model = $this->modelTable->findById($modelId, false);
@@ -243,14 +314,6 @@ class CampaignService
         if ($model->isGeneric()) {
             throw new Exception(
                 'Le modèle d\'une campagne doit être spécifique : un modèle générique est visible par toutes les entités.',
-                412
-            );
-        }
-
-        $usedBy = $this->campaignTable->findOneByModelId($modelId);
-        if ($usedBy !== null && $usedBy !== $campaign) {
-            throw new Exception(
-                sprintf('Ce modèle est déjà utilisé par la campagne « %s ».', $usedBy->getLabel()),
                 412
             );
         }
@@ -265,16 +328,7 @@ class CampaignService
      */
     private function setParticipants(Campaign $campaign, array $clientIds): void
     {
-        if (\count($clientIds) !== \count(array_unique($clientIds))) {
-            throw new Exception('Une même entité ne peut être invitée qu\'une seule fois.', 412);
-        }
-
-        /** @var Client[] $clients */
-        $clients = empty($clientIds) ? [] : $this->clientTable->findByIds($clientIds);
-        if (\count($clients) !== \count($clientIds)) {
-            throw new Exception('Une des entités choisies n\'existe pas.', 412);
-        }
-
+        $clients = $this->findClients($clientIds);
         $kept = [];
         foreach ($campaign->getParticipants()->toArray() as $participant) {
             if (\in_array($participant->getClient()->getId(), $clientIds, true)) {
@@ -291,6 +345,25 @@ class CampaignService
     }
 
     /**
+     * @param int[] $clientIds
+     *
+     * @return Client[]
+     */
+    private function findClients(array $clientIds): array
+    {
+        if (\count($clientIds) !== \count(array_unique($clientIds))) {
+            throw new Exception('Une même entité ne peut être invitée qu\'une seule fois.', 412);
+        }
+
+        $clients = empty($clientIds) ? [] : $this->clientTable->findByIds($clientIds);
+        if (\count($clients) !== \count($clientIds)) {
+            throw new Exception('Une des entités choisies n\'existe pas.', 412);
+        }
+
+        return $clients;
+    }
+
+    /**
      * Filtre des modèles choisissables : mêmes règles que validateModel().
      */
     private function withSelectableModelsFilter(FormattedInputParams $params): FormattedInputParams
@@ -298,11 +371,6 @@ class CampaignService
         $params->setFilterFor('status', ['value' => Model::STATUS_ACTIVE])
             ->setFilterFor('isGeneric', ['value' => 0])
             ->setFilterFor('anr.id', ['value' => 0, 'operator' => Comparison::GT]);
-
-        $usedModelIds = $this->campaignTable->findUsedModelIds();
-        if (!empty($usedModelIds)) {
-            $params->setFilterFor('id', ['value' => $usedModelIds, 'operator' => Comparison::NIN]);
-        }
 
         return $params;
     }

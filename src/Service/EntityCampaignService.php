@@ -40,7 +40,8 @@ class EntityCampaignService
     }
 
     /**
-     * L'entité participe à la campagne, entre son début et la date limite de réponse. Répétable sans effet.
+     * L'entité participe à la campagne, entre son début et sa fin : la participation est obligatoire, la date de
+     * démarrage attendue sert seulement au suivi. Répétable sans effet.
      *
      * @return array{participation: array{status: string}}
      */
@@ -55,9 +56,9 @@ class EntityCampaignService
 
         if (!$participant->isParticipating()) {
             $today = new DateTimeImmutable('today');
-            if ($today < $campaign->getStartDate() || $today > $campaign->getResponseDeadline()) {
+            if ($today < $campaign->getStartDate() || $today > $campaign->getEndDate()) {
                 throw new Exception(
-                    'La participation n\'est possible qu\'entre le début de la campagne et la date limite de réponse.',
+                    'La participation n\'est possible qu\'entre le début et la fin de la campagne.',
                     412
                 );
             }

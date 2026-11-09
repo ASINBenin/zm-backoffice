@@ -16,20 +16,19 @@ class CampaignTable extends AbstractTable
         parent::__construct($entityManager, $entityName);
     }
 
-    public function findOneByModelId(int $modelId): ?Campaign
-    {
-        return $this->getRepository()->findOneBy(['modelId' => $modelId]);
-    }
-
     /**
-     * @return int[]
+     * Campagne publiée ou clôturée qui utilise le modèle.
      */
-    public function findUsedModelIds(): array
+    public function findOneNotDraftByModelId(int $modelId): ?Campaign
     {
-        return array_map('intval', $this->getRepository()->createQueryBuilder('c')
-            ->select('c.modelId')
+        return $this->getRepository()->createQueryBuilder('c')
+            ->where('c.modelId = :modelId')
+            ->andWhere('c.status <> :draft')
+            ->setParameter('modelId', $modelId)
+            ->setParameter('draft', Campaign::STATUS_DRAFT)
+            ->setMaxResults(1)
             ->getQuery()
-            ->getSingleColumnResult());
+            ->getOneOrNullResult();
     }
 
     /**
@@ -64,7 +63,12 @@ class CampaignTable extends AbstractTable
             ->orderBy('c.startDate', 'DESC')
             ->addOrderBy('c.id', 'DESC');
         if ($since !== null) {
-            $queryBuilder->andWhere($queryBuilder->expr()->orX('c.updatedAt >= :since', 'p.updatedAt >= :since'))
+            // Une entité invitée après la publication n'a qu'une date de création
+            $queryBuilder->andWhere($queryBuilder->expr()->orX(
+                'c.updatedAt >= :since',
+                'p.createdAt >= :since',
+                'p.updatedAt >= :since'
+            ))
                 ->setParameter('since', $since);
         }
 

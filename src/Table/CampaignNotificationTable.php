@@ -18,4 +18,16 @@ class CampaignNotificationTable extends AbstractTable
     {
         return $this->getRepository()->findOneBy(['campaign' => $campaign, 'type' => $type]) !== null;
     }
+
+    public function removeSent(Campaign $campaign, string $type): void
+    {
+        $this->getRepository()->createQueryBuilder('n')
+            ->delete()
+            ->where('n.campaign = :campaign')
+            ->andWhere('n.type = :type')
+            ->setParameter('campaign', $campaign)
+            ->setParameter('type', $type)
+            ->getQuery()
+            ->execute();
+    }
 }
