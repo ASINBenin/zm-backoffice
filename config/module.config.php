@@ -24,6 +24,8 @@ use Monarc\BackOffice\Table\ServerTable;
 use Monarc\BackOffice\Service\CampaignNotificationService;
 use Monarc\BackOffice\Service\CampaignService;
 use Monarc\BackOffice\Service\CampaignStatisticsService;
+use Monarc\BackOffice\Service\InterEntityStatisticsService;
+use Monarc\BackOffice\Provider\StatsApiProvider;
 use Monarc\BackOffice\Service\ClientApiTokenService;
 use Monarc\BackOffice\Service\EntityCampaignService;
 use Monarc\BackOffice\Service\EntitySubmissionService;
@@ -157,6 +159,19 @@ return [
                     ],
                     'defaults' => [
                         'controller' => Controller\ApiCampaignStatisticsController::class,
+                    ],
+                ],
+            ],
+
+            'monarc_api_inter_entity_statistics' => [
+                'type' => 'segment',
+                'options' => [
+                    'route' => '/api/inter-entity-statistics/:type',
+                    'constraints' => [
+                        'type' => 'risks|compliance|threats|vulnerabilities|evolution',
+                    ],
+                    'defaults' => [
+                        'controller' => Controller\ApiInterEntityStatisticsController::class,
                     ],
                 ],
             ],
@@ -1034,6 +1049,7 @@ return [
             Controller\ApiCampaignClientsController::class => AutowireFactory::class,
             Controller\ApiCampaignModelsController::class => AutowireFactory::class,
             Controller\ApiCampaignStatisticsController::class => AutowireFactory::class,
+            Controller\ApiInterEntityStatisticsController::class => AutowireFactory::class,
             Controller\ApiClientApiTokenController::class => AutowireFactory::class,
             Controller\ApiEntityMeController::class => AutowireFactory::class,
             Controller\ApiEntityCampaignsController::class => AutowireFactory::class,
@@ -1106,6 +1122,8 @@ return [
             ServerService::class => AutowireFactory::class,
             CampaignService::class => AutowireFactory::class,
             CampaignStatisticsService::class => AutowireFactory::class,
+            InterEntityStatisticsService::class => AutowireFactory::class,
+            StatsApiProvider::class => ReflectionBasedAbstractFactory::class,
             CampaignNotificationService::class => AutowireFactory::class,
             NotifyExpiredInvitationsCommand::class => AutowireFactory::class,
             ClientApiTokenService::class => AutowireFactory::class,
@@ -1200,6 +1218,7 @@ return [
         // Super Admin : Gestion des droits des utilisateurs uniquement (Carnet d’adresses)
         'superadmin' => [
             'monarc_api_user_password',
+            'monarc_api_inter_entity_statistics',
             'monarc_api_admin_user_reset_password',
             'monarc_api_guides',
             'monarc_api_guides_items',
